@@ -1,0 +1,534 @@
+---
+title: "Analyses_preliminaires"
+author: "Marion Boisseaux"
+date: "2024-10-07"
+output: html_document
+---
+
+#library
+```{r}
+library(dplyr)
+library(igraph)
+```
+
+#data
+```{r}
+data <- read.csv("data/tableau_all_ReFHab_test1_MB.csv", sep = ";")
+```
+
+
+#keep certain variables 
+
+```{r}
+names(data)
+data <- data %>% dplyr::select(-DBH, -Season,-ind, -sp_hab, -dry_mass, -LA, -Co, -osmo) %>% 
+                        relocate("code_ind", .before="site")
+
+
+duplicated_rows <- data[duplicated(data$code_ind), ]
+
+#‘BF_24_Dg’, ‘TF_17_Dg’, ‘WS_11_Cf’, ‘WS_12_Ef’, ‘WS_15_Dg’, ‘WS_5_Ef’
+
+print(duplicated_rows)  # Prints rows with duplicate values
+
+# keep only the first occurrence of each value
+data <- data[!duplicated(data$code_ind), ]
+
+rownames(data) <- data$code_ind
+
+data <- data %>% dplyr::select(-code_ind)
+```
+
+#igraph
+```{r}
+
+# Create `igraph` object from data set
+graph <- cor((data[, c(6:22)])) %>%
+  graph_from_adjacency_matrix(
+    mode = "undirected", weighted = TRUE, diag = FALSE
+  )
+
+
+#'An edge attribute named `strength` that contains the character 
+#' **strong** for edges with weight >=0.9, and **moderate** otherwise.
+
+graph
+
+E(graph)$strength <- ifelse(E(graph)$weight >= 0.9, "strong", "moderate")
+edges_to_remove <- E(graph)[E(graph)$weight <0.95] #fgilterf list of edges and store in object
+filtered_graph <- delete_edges(graph, edges_to_remove)
+
+
+# Set edge color based on strength
+E(graph)$color <- ifelse(E(graph)$strength == "strong", "red", "blue")
+
+# Plot the graph
+plot(graph, edge.color = E(graph)$color)
+```
+
+#by species
+##especes qui sont non-exclusives
+```{r}
+# for E. Falcata (Ef)
+data_ef <- data[data$code_sp == "Ef", ]
+
+# Create graph for E. Falcata
+graph_ef <- cor((data_ef[, c(6:22)])) %>% 
+  graph_from_adjacency_matrix(mode = "undirected", weighted = TRUE, diag = FALSE)
+
+# Define edge strength: strong for |weight| >= 0.9, moderate otherwise
+E(graph_ef)$strength <- ifelse(abs(E(graph_ef)$weight) >= 0.9, "strong", "moderate")
+
+# Remove edges with weak absolute correlations (|weight| < 0.5)
+edges_to_remove_ef <- E(graph_ef)[abs(E(graph_ef)$weight) < 0.5]
+filtered_graph_ef <- delete_edges(graph_ef, edges_to_remove_ef)
+
+plot(graph_ef)
+plot(filtered_graph_ef)
+
+# Set edge attributes:
+# Color based on sign: here all black because difference on dotted or not
+E(filtered_graph_ef)$color <- ifelse(E(filtered_graph_ef)$weight > 0, "black", "black")
+
+# Line type: solid for positive correlations, dotted for negative
+E(filtered_graph_ef)$lty <- ifelse(E(filtered_graph_ef)$weight > 0, 1, 2)
+
+# Line width: thicker for strong correlations
+E(filtered_graph_ef)$lwd <- ifelse(E(filtered_graph_ef)$strength == "strong", 3, 1)
+
+# Use absolute weights for layout to avoid the warning
+layout <- layout_with_fr(filtered_graph_ef, weights = abs(E(filtered_graph_ef)$weight))
+
+# Plot the graph with the new layout
+plot(filtered_graph_ef, 
+     layout = layout, 
+     edge.color = E(filtered_graph_ef)$color, 
+     edge.lty = E(filtered_graph_ef)$lty, 
+     edge.width = E(filtered_graph_ef)$lwd,
+     vertex.size = 20,                     # Increase node size
+     vertex.color = NA,
+     vertex.frame.color = NA,              # Remove node borders
+     vertex.label.color = "black",         # Black labels for visibility
+     vertex.label.cex = 0.8                # Adjust label size
+     )
+# Add a title to the plot
+title(main = "E. Falcata", col.main = "black", cex.main = 1.5)
+
+```
+
+
+
+```{r}
+# for D. guianensis (Dg)
+data_dg <- data[data$code_sp == "Dg", ]
+
+# Create graph 
+graph_dg <- cor((data_dg[, c(6:22)])) %>% 
+  graph_from_adjacency_matrix(mode = "undirected", weighted = TRUE, diag = FALSE)
+
+# Define edge strength: strong for |weight| >= 0.9, moderate otherwise
+E(graph_dg)$strength <- ifelse(abs(E(graph_dg)$weight) >= 0.9, "strong", "moderate")
+
+# Remove edges with weak absolute correlations (|weight| < 0.5)
+edges_to_remove_ef <- E(graph_dg)[abs(E(graph_dg)$weight) < 0.5]
+filtered_graph_dg <- delete_edges(graph_dg, edges_to_remove_ef)
+
+plot(graph_dg)
+plot(filtered_graph_dg)
+
+# Set edge attributes:
+# Color based on sign: here all black because difference on dotted or not
+E(filtered_graph_dg)$color <- ifelse(E(filtered_graph_dg)$weight > 0, "black", "black")
+
+# Line type: solid for positive correlations, dotted for negative
+E(filtered_graph_dg)$lty <- ifelse(E(filtered_graph_dg)$weight > 0, 1, 2)
+
+# Line width: thicker for strong correlations
+E(filtered_graph_dg)$lwd <- ifelse(E(filtered_graph_dg)$strength == "strong", 3, 1)
+
+# Use absolute weights for layout to avoid the warning
+layout <- layout_with_fr(filtered_graph_dg, weights = abs(E(filtered_graph_dg)$weight))
+
+# Plot the graph with the new layout
+plot(filtered_graph_dg, 
+     layout = layout, 
+     edge.color = E(filtered_graph_dg)$color, 
+     edge.lty = E(filtered_graph_dg)$lty, 
+     edge.width = E(filtered_graph_dg)$lwd,
+     vertex.size = 20,                     # Increase node size
+     vertex.color = NA,
+     vertex.frame.color = NA,              # Remove node borders
+     vertex.label.color = "black",         # Black labels for visibility
+     vertex.label.cex = 0.8                # Adjust label size
+     )
+# Add a title to the plot
+title(main = "D. guianensis", col.main = "black", cex.main = 1.5)
+```
+
+
+```{r}
+# for C. fragrans. (Cf)
+data_cf <- data[data$code_sp == "Cf", ]
+
+# Create graph for E. Falcata
+graph_cf <- cor((data_cf[, c(6:22)])) %>% 
+  graph_from_adjacency_matrix(mode = "undirected", weighted = TRUE, diag = FALSE)
+
+
+# Define edge strength: strong for |weight| >= 0.9, moderate otherwise
+E(graph_cf)$strength <- ifelse(abs(E(graph_cf)$weight) >= 0.9, "strong", "moderate")
+
+# Remove edges with weak absolute correlations (|weight| < 0.5)
+edges_to_remove_ef <- E(graph_cf)[abs(E(graph_cf)$weight) < 0.5]
+filtered_graph_cf <- delete_edges(graph_cf, edges_to_remove_ef)
+
+plot(graph_cf)
+plot(filtered_graph_cf)
+
+# Set edge attributes:
+# Color based on sign: here all black because difference on dotted or not
+E(filtered_graph_cf)$color <- ifelse(E(filtered_graph_cf)$weight > 0, "black", "black")
+
+# Line type: solid for positive correlations, dotted for negative
+E(filtered_graph_cf)$lty <- ifelse(E(filtered_graph_cf)$weight > 0, 1, 2)
+
+# Line width: thicker for strong correlations
+E(filtered_graph_cf)$lwd <- ifelse(E(filtered_graph_cf)$strength == "strong", 3, 1)
+
+# Use absolute weights for layout to avoid the warning
+layout <- layout_with_fr(filtered_graph_cf, weights = abs(E(filtered_graph_cf)$weight))
+
+# Plot the graph with the new layout
+plot(filtered_graph_cf, 
+     layout = layout, 
+     edge.color = E(filtered_graph_cf)$color, 
+     edge.lty = E(filtered_graph_cf)$lty, 
+     edge.width = E(filtered_graph_cf)$lwd,
+     vertex.size = 20,                     # Increase node size
+     vertex.color = NA,
+     vertex.frame.color = NA,              # Remove node borders
+     vertex.label.color = "black",         # Black labels for visibility
+     vertex.label.cex = 0.8                # Adjust label size
+     )
+# Add a title to the plot
+title(main = "C. fragrans", col.main = "black", cex.main = 1.5)
+```
+
+###all 3 non-exclusive species
+```{r}
+# Set up a 1-row, 3-column layout
+par(mfrow = c(1, 3))
+
+# first species
+plot(filtered_graph_ef, 
+     layout = layout, 
+     edge.color = E(filtered_graph_ef)$color, 
+     edge.lty = E(filtered_graph_ef)$lty, 
+     edge.width = E(filtered_graph_ef)$lwd,
+     vertex.size = 20,                     # Increase node size
+     vertex.color = NA,
+     vertex.frame.color = NA,              # Remove node borders
+     vertex.label.color = "black",         # Black labels for visibility
+     vertex.label.cex = 0.8                # Adjust label size
+     )
+title(main = "E. Falcata", col.main = "black", cex.main = 1.5)
+
+# second species
+plot(filtered_graph_dg, 
+     layout = layout, 
+     edge.color = E(filtered_graph_dg)$color, 
+     edge.lty = E(filtered_graph_dg)$lty, 
+     edge.width = E(filtered_graph_dg)$lwd,
+     vertex.size = 20,                     # Increase node size
+     vertex.color = NA,
+     vertex.frame.color = NA,              # Remove node borders
+     vertex.label.color = "black",         # Black labels for visibility
+     vertex.label.cex = 0.8                # Adjust label size
+     )
+title(main = "D. guianensis", col.main = "black", cex.main = 1.5)
+
+# third species
+plot(filtered_graph_cf, 
+     layout = layout, 
+     edge.color = E(filtered_graph_cf)$color, 
+     edge.lty = E(filtered_graph_cf)$lty, 
+     edge.width = E(filtered_graph_cf)$lwd,
+     vertex.size = 20,                     # Increase node size
+     vertex.color = NA,
+     vertex.frame.color = NA,              # Remove node borders
+     vertex.label.color = "black",         # Black labels for visibility
+     vertex.label.cex = 0.8                # Adjust label size
+     )
+title(main = "C. fragrans", col.main = "black", cex.main = 1.5)
+
+# Reset the graphics parameters to default
+#par(mfrow = c(1, 1))
+
+```
+
+
+
+#especes exlusives a un habitat
+
+S. globulifera ; L. poiteaui ; L. irwinii.
+
+```{r}
+# for S. globulifera (Sg)
+data_sg <- data[data$code_sp == "Sg", ]
+
+# Create graph for E. Falcata
+graph_sg <- cor((data_sg[, c(6:22)])) %>% 
+  graph_from_adjacency_matrix(mode = "undirected", weighted = TRUE, diag = FALSE)
+
+
+# Define edge strength: strong for |weight| >= 0.9, moderate otherwise
+E(graph_sg)$strength <- ifelse(abs(E(graph_sg)$weight) >= 0.9, "strong", "moderate")
+
+# Remove edges with weak absolute correlations (|weight| < 0.5)
+edges_to_remove_ef <- E(graph_sg)[abs(E(graph_sg)$weight) < 0.5]
+filtered_graph_sg <- delete_edges(graph_sg, edges_to_remove_ef)
+
+plot(graph_sg)
+plot(filtered_graph_sg)
+
+# Set edge attributes:
+# Color based on sign: here all black because difference on dotted or not
+E(filtered_graph_sg)$color <- ifelse(E(filtered_graph_sg)$weight > 0, "black", "black")
+
+# Line type: solid for positive correlations, dotted for negative
+E(filtered_graph_sg)$lty <- ifelse(E(filtered_graph_sg)$weight > 0, 1, 2)
+
+# Line width: thicker for strong correlations
+E(filtered_graph_sg)$lwd <- ifelse(E(filtered_graph_sg)$strength == "strong", 3, 1)
+
+# Use absolute weights for layout to avoid the warning
+layout <- layout_with_fr(filtered_graph_sg, weights = abs(E(filtered_graph_sg)$weight))
+
+# Plot the graph with the new layout
+plot(filtered_graph_sg, 
+     layout = layout, 
+     edge.color = E(filtered_graph_sg)$color, 
+     edge.lty = E(filtered_graph_sg)$lty, 
+     edge.width = E(filtered_graph_sg)$lwd,
+     vertex.size = 20,                     # Increase node size
+     vertex.color = NA,
+     vertex.frame.color = NA,              # Remove node borders
+     vertex.label.color = "black",         # Black labels for visibility
+     vertex.label.cex = 0.8                # Adjust label size
+     )
+title(main = "S. globulifera", col.main = "black", cex.main = 1.5)
+```
+
+```{r}
+# for L. poiteaui  (Lp)
+data_lp <- data[data$code_sp == "Lp", ]
+
+# Create graph for E. Falcata
+graph_lp <- cor((data_lp[, c(6:22)])) %>% 
+  graph_from_adjacency_matrix(mode = "undirected", weighted = TRUE, diag = FALSE)
+
+
+# Define edge strength: strong for |weight| >= 0.9, moderate otherwise
+E(graph_lp)$strength <- ifelse(abs(E(graph_lp)$weight) >= 0.9, "strong", "moderate")
+
+# Remove edges with weak absolute correlations (|weight| < 0.5)
+edges_to_remove_ef <- E(graph_lp)[abs(E(graph_lp)$weight) < 0.5]
+filtered_graph_lp <- delete_edges(graph_lp, edges_to_remove_ef)
+
+plot(graph_lp)
+plot(filtered_graph_lp)
+
+# Set edge attributes:
+# Color based on sign: here all black because difference on dotted or not
+E(filtered_graph_lp)$color <- ifelse(E(filtered_graph_lp)$weight > 0, "black", "black")
+
+# Line type: solid for positive correlations, dotted for negative
+E(filtered_graph_lp)$lty <- ifelse(E(filtered_graph_lp)$weight > 0, 1, 2)
+
+# Line width: thicker for strong correlations
+E(filtered_graph_lp)$lwd <- ifelse(E(filtered_graph_lp)$strength == "strong", 3, 1)
+
+# Use absolute weights for layout to avoid the warning
+layout <- layout_with_fr(filtered_graph_lp, weights = abs(E(filtered_graph_lp)$weight))
+
+# Plot the graph with the new layout
+plot(filtered_graph_lp, 
+     layout = layout, 
+     edge.color = E(filtered_graph_lp)$color, 
+     edge.lty = E(filtered_graph_lp)$lty, 
+     edge.width = E(filtered_graph_lp)$lwd,
+     vertex.size = 20,                     # Increase node size
+     vertex.color = NA,
+     vertex.frame.color = NA,              # Remove node borders
+     vertex.label.color = "black",         # Black labels for visibility
+     vertex.label.cex = 0.8                # Adjust label size
+     )
+title(main = "L. poiteaui", col.main = "black", cex.main = 1.5)
+```
+
+
+```{r}
+# for L. irwinii  (Li)
+data_li <- data[data$code_sp == "Li", ]
+
+# Create graph for E. Falcata
+graph_li <- cor((data_li[, c(6:22)])) %>% 
+  graph_from_adjacency_matrix(mode = "undirected", weighted = TRUE, diag = FALSE)
+
+
+# Define edge strength: strong for |weight| >= 0.9, moderate otherwise
+E(graph_li)$strength <- ifelse(abs(E(graph_li)$weight) >= 0.9, "strong", "moderate")
+
+# Remove edges with weak absolute correlations (|weight| < 0.5)
+edges_to_remove_ef <- E(graph_li)[abs(E(graph_li)$weight) < 0.5]
+filtered_graph_li <- delete_edges(graph_li, edges_to_remove_ef)
+
+plot(graph_li)
+plot(filtered_graph_li)
+
+# Set edge attributes:
+# Color based on sign: here all black because difference on dotted or not
+E(filtered_graph_li)$color <- ifelse(E(filtered_graph_li)$weight > 0, "black", "black")
+
+# Line type: solid for positive correlations, dotted for negative
+E(filtered_graph_li)$lty <- ifelse(E(filtered_graph_li)$weight > 0, 1, 2)
+
+# Line width: thicker for strong correlations
+E(filtered_graph_li)$lwd <- ifelse(E(filtered_graph_li)$strength == "strong", 3, 1)
+
+# Use absolute weights for layout to avoid the warning
+layout <- layout_with_fr(filtered_graph_li, weights = abs(E(filtered_graph_li)$weight))
+
+# Plot the graph with the new layout
+plot(filtered_graph_li, 
+     layout = layout, 
+     edge.color = E(filtered_graph_li)$color, 
+     edge.lty = E(filtered_graph_li)$lty, 
+     edge.width = E(filtered_graph_li)$lwd,
+     vertex.size = 20,                     # Increase node size
+     vertex.color = NA,
+     vertex.frame.color = NA,              # Remove node borders
+     vertex.label.color = "black",         # Black labels for visibility
+     vertex.label.cex = 0.8                # Adjust label size
+     )
+title(main = "L. irwinii", col.main = "black", cex.main = 1.5)
+```
+
+###all 3 exclusive species
+```{r}
+# Set up a 1-row, 3-column layout
+par(mfrow = c(1, 3))
+
+# first species
+plot(filtered_graph_sg, 
+     layout = layout, 
+     edge.color = E(filtered_graph_sg)$color, 
+     edge.lty = E(filtered_graph_sg)$lty, 
+     edge.width = E(filtered_graph_sg)$lwd,
+     vertex.size = 20,                     # Increase node size
+     vertex.color = NA,
+     vertex.frame.color = NA,              # Remove node borders
+     vertex.label.color = "black",         # Black labels for visibility
+     vertex.label.cex = 0.8                # Adjust label size
+     )
+title(main = "S. globulifera", col.main = "black", cex.main = 1.5)
+
+# second species
+plot(filtered_graph_lp, 
+     layout = layout, 
+     edge.color = E(filtered_graph_lp)$color, 
+     edge.lty = E(filtered_graph_lp)$lty, 
+     edge.width = E(filtered_graph_lp)$lwd,
+     vertex.size = 20,                     # Increase node size
+     vertex.color = NA,
+     vertex.frame.color = NA,              # Remove node borders
+     vertex.label.color = "black",         # Black labels for visibility
+     vertex.label.cex = 0.8                # Adjust label size
+     )
+title(main = "L. poiteaui", col.main = "black", cex.main = 1.5)
+
+# third species
+plot(filtered_graph_li, 
+     layout = layout, 
+     edge.color = E(filtered_graph_li)$color, 
+     edge.lty = E(filtered_graph_li)$lty, 
+     edge.width = E(filtered_graph_li)$lwd,
+     vertex.size = 20,                     # Increase node size
+     vertex.color = NA,
+     vertex.frame.color = NA,              # Remove node borders
+     vertex.label.color = "black",         # Black labels for visibility
+     vertex.label.cex = 0.8                # Adjust label size
+     )
+title(main = "L. irwinii", col.main = "black", cex.main = 1.5)
+
+# Reset the graphics parameters to default
+#par(mfrow = c(1, 1))
+
+```
+
+
+#centrality measures
+```{r}
+#don't count the edges but sum the edges if it's a weighted graph!!!
+
+degree_ef <- as_adjacency_matrix(filtered_graph_ef, attr = "weight") %>%#takes igraph object and turns it into adj matrix
+#degree of node 1, sum all the nodes in row 1, etc. 
+ as.matrix() %>%
+ rowSums()
+
+centrality_ef <- data.frame(
+  node = V(filtered_graph_ef)$name,
+  degree = degree_ef
+)
+
+#loop
+
+filtered_graphs <- list(
+  ef = filtered_graph_ef,
+  dg = filtered_graph_dg,
+  cf = filtered_graph_cf,
+  sg = filtered_graph_sg,
+  lp = filtered_graph_lp,
+  li = filtered_graph_li
+)
+
+centrality_results <- list()
+
+for (species in names(filtered_graphs)) {
+  graph <- filtered_graphs[[species]]
+  
+   # Calculate degree
+  degree <- as_adjacency_matrix(graph, attr = "weight") %>%
+    as.matrix() %>%
+    rowSums()
+  
+   # Remove edges with non-positive weights
+  graph <- delete.edges(graph, E(graph)[E(graph)$weight <= 0])
+  
+  # Create a centrality data frame
+  centrality <- data.frame(
+    node = V(graph)$name,
+    degree = degree,
+    closeness = closeness(graph),
+    betweenness = betweenness(graph),
+    eigenvector = eigen_centrality(graph)$vector,
+    harmonic = harmonic_centrality(graph)
+  )
+  
+  # Store the results in the centrality_results list
+  centrality_results[[species]] <- centrality
+}
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
